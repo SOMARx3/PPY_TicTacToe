@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        .board {
+            display: grid;
+            /* Dynamically generate grid template columns based on grid size */
+            grid-template-columns: repeat({{ grid_size }}, 50px);
+            /* Dynamically generate grid template rows based on grid size */
+            grid-template-rows: repeat({{ grid_size }}, 50px);
+            gap: 2px; /* Adjust gap between cells as needed */
+        }
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px; /* Adjust font size as needed */
+            background-color: #ddd;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            height: 50px; /* Adjust cell height as needed */
+            width: 50px; /* Adjust cell width as needed */
+        }
+        .cell:hover {
+            background-color: #ccc;
+        }
+        .blink {
+            animation: blink-animation 1s infinite;
+        }
+        @keyframes blink-animation {
+            0% {
+                background-color: transparent;
+            }
+            50% {
+                background-color: yellow;
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+    </style>
+</head>
+<body>
+<h1 id="currentPlayer">Current Player: {{ current_player }}</h1>
+<div id="messageDiv"></div>
+<div class="board" id="board">
+    {% for row in range(grid_size) %}
+    {% for col in range(grid_size) %}
+    <div class="cell" onclick="makeMove({{ row }}, {{ col }})"></div>
+    {% endfor %}
+    {% endfor %}
+</div>
+<script>
+    // Read player symbols from game-init.json
+    const playerSymbols = JSON.parse('{{ player_symbols | tojson }}');
+
+    // Function to make a move
+    function makeMove(row, col) {
+        const cell = cells[row][col];
+        if (!cell.innerText) {
+            fetch('/make_move', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    row: row,
+                    col: col
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const result = data.result;
+                const winner = data.winner;
+                if (result === 'success') {
+                    currentPlayer = data.current_player;
+                    document.getElementById('currentPlayer').innerText = `Current Player: ${currentPlayer}`;
+                    // Use player symbol for the current player
+                    cell.innerText = playerSymbols[currentPlayer];
+                    cell.classList.remove('blink'); // Remove blinking effect after making a move
+                } else if (result === 'win') {
+                    messageDiv.innerText = `Congratulations! ${winner} wins!`;
+                    // Display winning symbols on the board
+                    const winningCells = data.winning_cells;
+                    winningCells.forEach(cellCoords => {
+                        const [row, col] = cellCoords;
+                        const winningCell = cells[row][col];
+                        winningCell.style.backgroundColor = 'green';
+                        winningCell.innerText = '';
+                    });
+                    // Disable further moves
+                    cells.forEach(row => {
+                        row.forEach(cell => {
+                            cell.onclick = null;
+                        });
+                    });
+                } else if (result === 'draw') {
+                    messageDiv.innerText = 'It\'s a draw!';
+                } else if (result === 'occupied') {
+                    messageDiv.innerText = 'This cell is already occupied. Please choose another one.';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    }
+
+    // Initialize cells array
+    const cells = [];
+    document.querySelectorAll('.board .cell').forEach((cell, index) => {
+        const row = Math.floor(index / {{ grid_size }});
+        const col = index % {{ grid_size }};
+        if (!cells[row]) cells[row] = [];
+        cells[row][col] = cell;
+    });
+</script>
+</body>
+</html>
