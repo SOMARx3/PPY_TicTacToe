@@ -1,6 +1,5 @@
 import time
 import keyboard
-from pynput.keyboard import Key
 from game import TicTacToe
 import json
 
@@ -14,6 +13,9 @@ def read_game_init():
 
 
 def start_game():
+    print()
+    print('Use arrows to navigate, enter to leave, q to quit')
+    print('In case of Error 13 - Must be run as administrator, run script be printing: sudo python3 app.py')
     gui = Gui(grid_size)
     gui.render(game.current_player + " turn")
 
